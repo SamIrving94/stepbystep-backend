@@ -17,12 +17,12 @@ export async function POST(req: Request) {
 
     const prompt = SIMPLIFY_PROMPT.replace("{{INSTRUCTIONS}}", instructions)
 
+    // The AI SDK automatically uses process.env.OPENAI_API_KEY
     const { text } = await generateText({
       model: openai("gpt-4o"),
       prompt: prompt,
     })
 
-    // The AI is instructed to return a JSON array string. We parse it here.
     const steps = JSON.parse(text)
 
     if (!Array.isArray(steps)) {
