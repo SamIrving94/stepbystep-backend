@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { 
+  ENHANCED_PROCESSING_PROMPT, 
+  COOKING_PROMPT, 
+  DIY_PROMPT, 
+  TECHNICAL_PROMPT,
+  CONFIDENCE_PROMPT,
+  SAFETY_PROMPT
+} from '@/lib/prompts';
 
 // Input validation types
 interface ProcessInstructionsRequest {
@@ -63,51 +71,53 @@ function validateInput(data: any): ProcessInstructionsRequest | null {
   };
 }
 
-// AI prompt generation
+// AI prompt generation with specialized prompts
 function generatePrompt(input: ProcessInstructionsRequest): string {
   const { rawText, title, category, difficulty, preferences } = input;
   
-  return `You are an accessibility expert helping users with dyslexia and ADHD follow instructions. 
-Transform the given instructions into a clear, step-by-step format.
-
-INSTRUCTIONS TO PROCESS:
-${rawText}
-
-TITLE: ${title}
-CATEGORY: ${category}
-DIFFICULTY: ${difficulty}
-
-REQUIREMENTS:
-1. Use short, simple sentences (max 15 words)
-2. Number each step clearly
-3. Extract and list all ingredients/tools at the beginning
-4. Include safety warnings as separate bullet points
-5. Add estimated time for each step
-6. Use active voice and direct commands
-7. Avoid jargon and complex terminology
-8. Reading level: ${preferences?.readingLevel || 'simple'}
-9. Step detail level: ${preferences?.stepGranularity || 'detailed'}
-
-RESPOND IN THIS EXACT JSON FORMAT:
-{
-  "title": "string",
-  "category": "string", 
-  "difficulty": "string",
-  "totalTime": "string (e.g., '45 minutes')",
-  "ingredients": ["string array"],
-  "tools": ["string array"],
-  "warnings": ["string array"],
-  "steps": [
-    {
-      "stepNumber": 1,
-      "instruction": "string",
-      "estimatedTime": "string (e.g., '5 minutes')",
-      "tips": "string (optional)"
-    }
-  ]
-}
-
-Only return valid JSON, no additional text.`;
+  // Select the appropriate specialized prompt based on category
+  let basePrompt: string;
+  
+  switch (category?.toLowerCase()) {
+    case 'cooking':
+    case 'recipe':
+    case 'food':
+      basePrompt = COOKING_PROMPT;
+      break;
+    case 'diy':
+    case 'home':
+    case 'repair':
+    case 'construction':
+      basePrompt = DIY_PROMPT;
+      break;
+    case 'technical':
+    case 'computer':
+    case 'software':
+    case 'technology':
+      basePrompt = TECHNICAL_PROMPT;
+      break;
+    default:
+      basePrompt = ENHANCED_PROCESSING_PROMPT;
+  }
+  
+  // Add confidence-building for overwhelming tasks
+  if (difficulty === 'advanced' || preferences?.stepGranularity === 'very-detailed') {
+    basePrompt = CONFIDENCE_PROMPT;
+  }
+  
+  // Add safety-first for potentially dangerous categories
+  if (category?.toLowerCase().includes('safety') || 
+      category?.toLowerCase().includes('dangerous') ||
+      rawText.toLowerCase().includes('sharp') ||
+      rawText.toLowerCase().includes('hot') ||
+      rawText.toLowerCase().includes('electric')) {
+    basePrompt = SAFETY_PROMPT;
+  }
+  
+  // Replace placeholders in the prompt
+  return basePrompt
+    .replace('{{INSTRUCTIONS}}', rawText)
+    .replace('{{ENHANCED_PROCESSING_PROMPT}}', ENHANCED_PROCESSING_PROMPT);
 }
 
 // Fallback processing for when AI is unavailable
