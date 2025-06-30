@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { SIMPLIFY_PROMPT } from "@/lib/prompts"
 import axios from 'axios';
+import { corsHeaders } from '@/lib/cors';
 
 export const maxDuration = 60 // Increase timeout for fetching external URLs
 
@@ -20,6 +21,14 @@ interface FetchAndSimplifyResponse {
   details?: string;
 }
 
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<FetchAndSimplifyResponse>> {
   try {
     const body: FetchAndSimplifyRequest = await request.json();
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
     if (!url) {
       return NextResponse.json(
         { success: false, error: "URL is required." },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -38,7 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
     } catch {
       return NextResponse.json(
         { success: false, error: "Invalid URL format" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -55,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
     if (!response.data) {
       return NextResponse.json(
         { success: false, error: "No content received from URL" },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -71,7 +80,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
           error: "Could not extract readable content from this page",
           details: "The page may not contain readable text or may be blocked from content extraction"
         },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -88,7 +97,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
           error: "Extracted content is too short",
           details: "The page may not contain enough readable text"
         },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -111,7 +120,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
       success: true,
       steps: steps,
       extractedText: extractedText,
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Fetch and simplify error:', error);
@@ -149,7 +158,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
     
     return NextResponse.json(
       { success: false, error: errorMessage, details: details },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

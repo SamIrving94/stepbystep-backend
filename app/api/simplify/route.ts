@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 import { SIMPLIFY_PROMPT } from "@/lib/prompts"
+import { corsHeaders } from '@/lib/cors';
 
 export const maxDuration = 30
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
 
 interface SimplifyRequest {
   instructions: string;
@@ -23,7 +32,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SimplifyR
     if (!instructions) {
       return NextResponse.json(
         { success: false, error: "Instructions are required." },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -44,7 +53,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SimplifyR
     return NextResponse.json({
       success: true,
       steps: steps,
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Simplify error:', error);
@@ -59,7 +68,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SimplifyR
     
     return NextResponse.json(
       { success: false, error: errorMessage },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

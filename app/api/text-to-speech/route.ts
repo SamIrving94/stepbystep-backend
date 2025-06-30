@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { corsHeaders } from '@/lib/cors';
 
 interface TTSRequest {
   text: string;
@@ -27,6 +28,14 @@ interface TTSResponse {
 
 // Cache directory for audio files
 const CACHE_DIR = path.join(process.cwd(), 'public', 'audio-cache');
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
 
 // Ensure cache directory exists
 async function ensureCacheDir() {
@@ -107,14 +116,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<TTSRespon
     if (!text || text.trim().length === 0) {
       return NextResponse.json(
         { success: false, error: 'Text is required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     if (text.length > 4000) {
       return NextResponse.json(
         { success: false, error: 'Text too long (max 4000 characters)' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -130,7 +139,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TTSRespon
           method: 'openai',
           cached: true,
           estimatedCost: 0, // Cached, so no cost
-        });
+        }, { headers: corsHeaders });
       }
     }
 
@@ -173,7 +182,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TTSRespon
           method: 'openai',
           cached: false,
           estimatedCost: cost,
-        });
+        }, { headers: corsHeaders });
       } catch (error) {
         console.error('OpenAI TTS failed, falling back to browser method:', error);
         ttsMethod = 'browser';
@@ -191,13 +200,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<TTSRespon
         text: text,
         voice: voice,
         speed: speed,
-      });
+      }, { headers: corsHeaders });
     }
 
     // Fallback: return error
     return NextResponse.json(
       { success: false, error: 'No TTS method available' },
-      { status: 503 }
+      { status: 503, headers: corsHeaders }
     );
 
   } catch (error) {
@@ -209,7 +218,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<TTSRespon
         error: 'Failed to generate speech',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }

@@ -9,6 +9,21 @@ import {
   SAFETY_PROMPT
 } from '@/lib/prompts';
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // Input validation types
 interface ProcessInstructionsRequest {
   rawText: string;
@@ -159,7 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
           error: 'Invalid input: rawText is required and must be at least 10 characters long',
           code: 'INVALID_INPUT',
         },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -172,7 +187,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
           success: true,
           processedInstructions: fallbackResult,
         },
-        { status: 200 }
+        { status: 200, headers: corsHeaders }
       );
     }
 
@@ -225,7 +240,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         success: true,
         processedInstructions,
       },
-      { status: 200 }
+      { status: 200, headers: corsHeaders }
     );
 
   } catch (error) {
@@ -242,7 +257,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
             success: true,
             processedInstructions: fallbackResult,
           },
-          { status: 200 }
+          { status: 200, headers: corsHeaders }
         );
       }
     } catch (fallbackError) {
@@ -256,7 +271,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         code: 'PROCESSING_ERROR',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 503 }
+      { status: 503, headers: corsHeaders }
     );
   }
 } 

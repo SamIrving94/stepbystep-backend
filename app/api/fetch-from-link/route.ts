@@ -15,6 +15,21 @@ interface FetchFromLinkResponse {
   details?: string;
 }
 
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+// Handle preflight OPTIONS request
+export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<FetchFromLinkResponse>> {
   try {
     // Parse request body
@@ -25,7 +40,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
     if (!url) {
       return NextResponse.json(
         { success: false, error: 'URL is required' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -35,7 +50,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
     } catch {
       return NextResponse.json(
         { success: false, error: 'Invalid URL format' },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -52,7 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
     if (!response.data) {
       return NextResponse.json(
         { success: false, error: 'No content received from URL' },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -73,7 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
           error: 'Could not extract readable content from this page',
           details: 'The page may not contain readable text or may be blocked from content extraction'
         },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -91,7 +106,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
           error: 'Extracted content is too short',
           details: 'The page may not contain enough readable text'
         },
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -99,7 +114,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
       success: true,
       content: content,
       title: article.title || 'Untitled',
-    });
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('Content extraction error:', error);
@@ -120,15 +135,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
       } else if (error.response?.status === 404) {
         errorMessage = 'Page not found';
         details = 'The requested page does not exist';
-      } else if (error.response?.status >= 500) {
+      } else if (error.response && error.response.status >= 500) {
         errorMessage = 'Server error';
         details = 'The website server is experiencing issues';
       } else if (error.code === 'ETIMEDOUT') {
         errorMessage = 'Request timeout';
         details = 'The website took too long to respond';
       } else {
-        errorMessage = `HTTP Error: ${error.response?.status || 'Unknown'}`;
-        details = error.message;
+        errorMessage = `HTTP Error: ${error.response?.status ?? 'Unknown'}`;
+        details = error.message || 'Unknown error';
       }
     } else if (error instanceof Error) {
       errorMessage = error.message;
@@ -141,7 +156,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
         error: errorMessage,
         details: details,
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
@@ -156,6 +171,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         body: { url: 'https://example.com/article' }
       }
     },
-    { status: 200 }
+    { status: 200, headers: corsHeaders }
   );
 } 
