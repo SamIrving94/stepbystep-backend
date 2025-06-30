@@ -20,6 +20,7 @@ interface FetchAndSimplifyResponse {
   error?: string;
   details?: string;
   fallbackUsed?: boolean;
+  contentType?: string;
 }
 
 // Handle preflight OPTIONS request
@@ -30,7 +31,7 @@ export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
   });
 }
 
-// Fallback content extraction methods
+// Fallback content extraction methods for HTML
 function extractContentFallback(dom: JSDOM): string | null {
   const document = dom.window.document;
   
@@ -100,8 +101,23 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
       );
     }
 
-    // 1. Fetch HTML content from the URL
-    console.log(`Fetching and simplifying content from: ${url}`);
+    // Check if it's a PDF file and provide helpful error
+    const isPDF = url.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
+    
+    if (isPDF) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "PDF files are not currently supported",
+          details: "This URL points to a PDF file. PDF extraction is not yet available. Please try a web page with HTML content instead.",
+          contentType: 'pdf'
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Handle HTML content
+    console.log(`Fetching and simplifying HTML content from: ${url}`);
     
     const response = await axios.get(url, {
       timeout: 15000, // Increased timeout to 15 seconds
@@ -158,6 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
           success: false, 
           error: "Could not extract readable content from this page",
           details: `Page analysis: Title="${title}", Has body=${hasBody}, Body length=${bodyLength}, Scripts=${hasScripts}, Iframes=${hasIframes}. The page may be JavaScript-heavy, blocked from extraction, or contain no readable text.`,
+          contentType: 'html',
           debug: {
             title,
             hasBody,
@@ -207,6 +224,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchAndS
       steps: steps,
       extractedText: cleanedText,
       fallbackUsed,
+      contentType: 'html',
     }, { headers: corsHeaders });
 
   } catch (error) {
