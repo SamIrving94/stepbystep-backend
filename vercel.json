@@ -7,11 +7,6 @@
       "use": "@vercel/next"
     }
   ],
-  "functions": {
-    "app/api/**/*.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "env": {
     "NPM_FLAGS": "--prefer-offline --no-audit"
   }
