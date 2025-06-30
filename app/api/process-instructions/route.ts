@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // Input validation types
 interface ProcessInstructionsRequest {
   rawText: string;
@@ -175,6 +170,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     const prompt = generatePrompt(validatedInput);
 
     // Call OpenAI API
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
     const completion = await openai.chat.completions.create({
       model: 'gpt-4',
       messages: [

@@ -10,7 +10,9 @@
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/openai": "latest",
     "@mozilla/readability": "latest",
+    "ai": "latest",
     "axios": "^1.10.0",
     "jsdom": "latest",
     "next": "15.2.4",
