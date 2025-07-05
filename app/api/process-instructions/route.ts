@@ -160,10 +160,48 @@ function fallbackProcessing(input: ProcessInstructionsRequest): ProcessedInstruc
   };
 }
 
+// Add this normalization function before the POST export
+function normalizeProcessedInstructions(instr: any): any {
+  return {
+    title: instr.title || '',
+    totalTime: instr.totalTime || '',
+    steps: Array.isArray(instr.steps)
+      ? instr.steps.map((step: any, i: number) => ({
+          stepNumber: step.stepNumber ?? i + 1,
+          instruction: step.instruction || '',
+          estimatedTime: step.estimatedTime || '',
+          tips: step.tips ? (Array.isArray(step.tips) ? step.tips : [step.tips]) : [],
+          safetyNotes: step.safetyNotes ? (Array.isArray(step.safetyNotes) ? step.safetyNotes : [step.safetyNotes]) : [],
+        }))
+      : [],
+    ingredients: Array.isArray(instr.ingredients) ? instr.ingredients : [],
+    tools: Array.isArray(instr.tools) ? instr.tools : [],
+    safetyWarnings: Array.isArray(instr.safetyWarnings)
+      ? instr.safetyWarnings
+      : Array.isArray(instr.warnings)
+        ? instr.warnings
+        : [],
+    completionMessage: instr.completionMessage || 'Great job! You have completed the instructions.',
+  };
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse>> {
   try {
     // Parse request body
     const body = await request.json();
+    console.log('DEBUG: Received body in /api/process-instructions:', JSON.stringify(body));
+    
+    // Validate input
+    const { instructions, images } = body;
+    if (!instructions || !Array.isArray(instructions)) {
+      console.error('DEBUG: Validation error - instructions missing or not array', { instructions });
+      return NextResponse.json({ success: false, error: 'Invalid input: instructions must be an array.' }, { status: 400 });
+    }
+    if (images && !Array.isArray(images)) {
+      console.error('DEBUG: Validation error - images present but not array', { images });
+      return NextResponse.json({ success: false, error: 'Invalid input: images must be an array.' }, { status: 400 });
+    }
+    console.log('DEBUG: Validated input', { instructions, images });
     
     // Validate input
     const validatedInput = validateInput(body);
@@ -185,7 +223,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       return NextResponse.json(
         {
           success: true,
-          processedInstructions: fallbackResult,
+          processedInstructions: normalizeProcessedInstructions(fallbackResult),
         },
         { status: 200, headers: corsHeaders }
       );
@@ -238,7 +276,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     return NextResponse.json(
       {
         success: true,
-        processedInstructions,
+        processedInstructions: normalizeProcessedInstructions(processedInstructions),
       },
       { status: 200, headers: corsHeaders }
     );
@@ -255,7 +293,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         return NextResponse.json(
           {
             success: true,
-            processedInstructions: fallbackResult,
+            processedInstructions: normalizeProcessedInstructions(fallbackResult),
           },
           { status: 200, headers: corsHeaders }
         );
