@@ -104,19 +104,42 @@ export async function POST(request: NextRequest): Promise<NextResponse<FetchFrom
       );
     }
 
-    // Check if it's a PDF file and provide helpful error
+    // Check if it's a PDF file and extract text
     const isPDF = url.toLowerCase().endsWith('.pdf') || url.toLowerCase().includes('.pdf');
-    
     if (isPDF) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'PDF files are not currently supported',
-          details: 'This URL points to a PDF file. PDF extraction is not yet available. Please try a web page with HTML content instead.',
-          contentType: 'pdf'
-        },
-        { status: 400, headers: corsHeaders }
-      );
+      try {
+        // Download the PDF as an arraybuffer
+        const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 20000 });
+        if (!response.data) {
+          return NextResponse.json(
+            { success: false, error: 'No data received from PDF URL', contentType: 'pdf' },
+            { status: 500, headers: corsHeaders }
+          );
+        }
+        // Extract text from PDF
+        const pdfParse = (await import('pdf-parse')).default;
+        const pdfData = await pdfParse(response.data);
+        const text = pdfData.text?.trim() || '';
+        if (text.length < 50) {
+          return NextResponse.json(
+            { success: false, error: 'Extracted PDF text is too short or empty', contentType: 'pdf' },
+            { status: 500, headers: corsHeaders }
+          );
+        }
+        // Return in the same structure as HTML extraction
+        return NextResponse.json({
+          success: true,
+          content: text.substring(0, 10000),
+          title: pdfData.info?.Title || 'PDF Document',
+          fallbackUsed: false,
+          contentType: 'pdf',
+        }, { headers: corsHeaders });
+      } catch (pdfError) {
+        return NextResponse.json(
+          { success: false, error: 'Failed to extract PDF content', details: pdfError instanceof Error ? pdfError.message : 'Unknown PDF error', contentType: 'pdf' },
+          { status: 500, headers: corsHeaders }
+        );
+      }
     }
 
     // Handle HTML content
